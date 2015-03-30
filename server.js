@@ -1,67 +1,43 @@
 var express = require('express'),
-  logger = require('morgan'),
-  stylus = require('stylus'),
-  bodyParser = require('body-parser'),
-  mongoose = require('mongoose');
+  mongoose = require('mongoose'),
+  passport = require('passport'),
+  LocalStrategy = require('passport-local').Strategy();
 
 var env = process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 var app = express();
 
-function compile(str, path) {
-    return stylus(str).set('filename', path);
-}
+var config = require('./server/config/config')[env];
 
-app.set('views', __dirname + '/server/views');
-app.set('view engine', 'jade');
-app.use(logger('dev'));
-app.use(bodyParser());
-app.use(stylus.middleware(
-  {
-    src: __dirname + '/public',
-    compile: compile
+require('./server/config/express')(app, config);
+
+require('./server/config/mongoose')(config);
+
+var User = mongoose.model('User');
+passport.use(new LocalStrategy(
+  function(username, password, done) {
+    User.findOne({userName:username}).exec(function(err, user) {
+      if (user) {
+        return done(null, user);
+      }
+      else {
+        return done(null, false);
+      }
+    })
   }
 ))
 
-app.use(express.static(__dirname + '/public'));
+passport.serializeUser(function(user, done) {
+  if(user) {
+    done(null, user._id);     
+  }
+})
 
-if (env === 'development') {
-  mongoose.connect('mongodb://mv_user:mv_password@localhost/multivision');
-} else {
-  mongoose.connect('mongodb://mv_user:mv_password@ds037087.mongolab.com:37087/multivision');
-}
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error...'));
-db.once('open', function callback() {
-  console.log('multivision db opened');
-});
+passport.deserializeUser(function(id, done) {
+  
+})
 
-var messageSchema = mongoose.Schema({message: String});
-var Message = mongoose.model('Message', messageSchema);
-var mongoMessage; 
-Message.findOne().exec(
-  function(err, msg) {
-    if (err) {
-      console.log('Error: ' + err);
-      return; 
-    }
-    if (!msg) {
-      console.log('msg is null');
-      return;
-    }
-    mongoMessage = msg.message;
-});
+require('./server/config/routes')(app);
 
-app.get('/partials/:partialPath', function(req, res) {
-  res.render('partials/' + req.params.partialPath);
-});
-
-app.get('*', function(req, rsp) {
-  rsp.render('index', {
-    mongoMessage: mongoMessage
-  }) 
-});
-
-var port = process.env.PORT || 3000;
-app.listen(port);
-console.log('Listening on port ' + port + '...');
+app.listen(config.port);
+console.log('Listening on port ' + config.port + '...');
