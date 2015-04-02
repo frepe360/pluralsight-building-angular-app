@@ -1,7 +1,7 @@
 var express = require('express'),
   mongoose = require('mongoose'),
   passport = require('passport'),
-  LocalStrategy = require('passport-local').Strategy();
+  LocalStrategy = require('passport-local').Strategy;
 
 var env = process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -15,19 +15,18 @@ require('./server/config/mongoose')(config);
 
 var User = mongoose.model('User');
 
-var verify = function(username, password, done) {
-    User.findOne({userName:username}).exec(function(err, user) {
-      if (user) {
-        return done(null, user);
-      }
-      else {
-        return done(null, false);
-      }
-    })
-  }
-
-
-passport.use(new LocalStrategy(null, verify));
+passport.use(new LocalStrategy(
+    function(username, password, done) {
+      User.findOne({userName: username}).exec(function (err, user) {
+        if (user) {
+          return done(null, user);
+        }
+        else {
+          return done(null, false);
+        }
+      })
+    }
+));
 
 passport.serializeUser(function(user, done) {
   if(user) {
