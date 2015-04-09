@@ -32,4 +32,5 @@ exports.requiresRole = function(role) {
             next();
         }
     }
-}
+};
+
